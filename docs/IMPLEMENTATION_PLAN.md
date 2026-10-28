@@ -89,7 +89,7 @@ Chains: 9 to 15 is sequential. 16, 32, 33 and 18 can run in parallel with it. 22
 
 Each issue mentions `@claude`. To have Claude implement an issue via GitHub:
 
-1. The workflow is in `.github/workflows/claude.yml`. Add the repository secret `ANTHROPIC_API_KEY` (or switch to `CLAUDE_CODE_OAUTH_TOKEN`, see the comments in the file) and make sure the Claude GitHub app is installed on the repo.
+1. The workflows are on `main`: `.github/workflows/claude.yml` (responds to `@claude`) and `.github/workflows/claude-code-review.yml` (reviews PRs). They need the repository secret `CLAUDE_CODE_OAUTH_TOKEN` and the Claude GitHub app installed on the repo.
 2. Comment `@claude implement this` on the issue **once its dependencies are merged**. Mentions in the original issue body only trigger if the workflow is installed when the issue is opened.
 3. Review the PR like any other. `CLAUDE.md` holds the conventions Claude follows.
 
