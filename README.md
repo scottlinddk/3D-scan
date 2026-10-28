@@ -14,7 +14,28 @@ Inspired by [wesbos/3d-model-anything](https://github.com/wesbos/3d-model-anythi
 
 ## Status
 
-Planning. See:
+Early scaffolding. The repo layout, tooling and CI are in place, the features are tracked in the issues.
+See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Issues](https://github.com/scottlinddk/3d-scan/issues) for the task breakdown
+
+## Development
+
+Requirements: Node 22 (`.nvmrc`), pnpm 10 (via Corepack), and [uv](https://docs.astral.sh/uv/) (installs Python 3.12 from `.python-version`).
+
+```sh
+corepack enable
+pnpm install          # web dependencies
+uv sync               # Python dependencies (services/*)
+
+pnpm dev              # web app on http://localhost:5173
+pnpm check            # lint, typecheck and tests for web and Python
+
+pnpm test             # web tests only
+pnpm test:py          # Python tests only (uv run pytest)
+pnpm lint             # ESLint, Prettier, ruff, mypy
+```
+
+Layout: `apps/web` (React), `services/api` and `services/pipeline` (Python), `apps/capture-ios` and
+`services/reconstructor-macos` (Swift, later), `packages/printer-profiles`, `deploy`, `docs`.

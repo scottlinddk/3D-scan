@@ -1,0 +1,29 @@
+/* Design tokens. Components use these variables, never raw values. */
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f5f6f8;
+  --color-text: #15171a;
+  --color-text-muted: #5b6270;
+  --color-accent: #0a6cff;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+
+  --font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-size-base: 1rem;
+  --font-size-xl: 1.75rem;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #101215;
+    --color-surface: #1a1d22;
+    --color-text: #eceef1;
+    --color-text-muted: #9aa3b2;
+    --color-accent: #5b9bff;
+  }
+}

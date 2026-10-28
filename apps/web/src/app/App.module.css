@@ -1,0 +1,15 @@
+.shell {
+  margin: 0 auto;
+  max-width: 40rem;
+  padding: var(--space-6) var(--space-4);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  margin: 0 0 var(--space-2);
+}
+
+.tagline {
+  color: var(--color-text-muted);
+  margin: 0;
+}

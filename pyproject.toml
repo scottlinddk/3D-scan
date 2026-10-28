@@ -1,0 +1,43 @@
+[project]
+name = "3d-scan-workspace"
+version = "0.0.0"
+description = "Workspace root for the 3d-scan Python services."
+requires-python = ">=3.12"
+dependencies = ["scan3d-api", "scan3d-pipeline"]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.13",
+  "pytest>=8.3",
+  "ruff>=0.8",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["services/api", "services/pipeline"]
+
+[tool.uv.sources]
+scan3d-api = { workspace = true }
+scan3d-pipeline = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["apps", "docs", "node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "C4", "PT"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["services"]
+mypy_path = ["services/api/src", "services/pipeline/src"]
+explicit_package_bases = true
+namespace_packages = true
+
+[tool.pytest.ini_options]
+testpaths = ["services"]
+addopts = "-ra --strict-markers --import-mode=importlib"
