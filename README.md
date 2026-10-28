@@ -6,8 +6,8 @@ Inspired by [wesbos/3d-model-anything](https://github.com/wesbos/3d-model-anythi
 
 ## How it will work
 
-1. **Capture** with an existing scanner app (Polycam, Scaniverse, Reality Composer), a photo set, or later a native iOS app.
-2. **Upload** to the local web app.
+1. **Capture** with the native iOS app, a photo set, or an existing scanner app (Polycam, Scaniverse, Reality Composer).
+2. **Upload** to the web app (or the iOS app) running on your own VPS.
 3. **Pipeline:** ingest, clean, repair, scale, orient, decimate, validate.
 4. **Review** in the 3D viewer, fix orientation or scale if needed.
 5. **Export** 3MF (and STL) and open it in Bambu Studio.

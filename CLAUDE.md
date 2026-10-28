@@ -12,6 +12,8 @@ Guidance for Claude (and humans) working in this repository.
 
 ## Stack
 - **Web (`apps/web`):** React + TypeScript (strict), Vite, TanStack Query v5, React Router v7, @react-three/fiber. pnpm.
+- **iOS (`apps/capture-ios`):** Swift, SwiftUI, RealityKit Object Capture. Claude cannot build or run it here, so keep logic in small unit-tested types and list manual device checks in the PR.
+- **Hosting:** Hetzner VPS, docker compose, Caddy, SQLite (WAL). See `deploy/`.
 - **Python (`services/*`):** Python 3.12, uv, FastAPI, trimesh, pymeshlab, manifold3d, lib3mf. ruff + mypy (strict) + pytest.
 
 ## Conventions

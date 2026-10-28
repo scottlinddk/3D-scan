@@ -1,6 +1,6 @@
 # Architecture
 
-> Status: proposal (v0.1). Decisions marked **[Decision]** are open for review before implementation starts.
+> Status: proposal (v0.2, hosted on Hetzner VPS, photogrammetry and iOS in phase 1). Decisions marked **[Decision]** are open for review before implementation starts.
 
 ## 1. Goal
 
@@ -39,27 +39,46 @@ Scanning to print has known failure modes. The architecture is shaped around the
 
 ```mermaid
 flowchart LR
-  subgraph Capture
-    A1[Existing scanner apps<br/>Polycam, Scaniverse, RealityScan,<br/>Reality Composer] -->|USDZ / GLB / OBJ / PLY| UP
-    A2[Photo set<br/>any camera] -->|JPG/HEIC zip| UP
-    A3[Native iOS app<br/>Object Capture, phase 3] -->|capture bundle| UP
+  subgraph Clients
+    IOS[Native iOS app<br/>Object Capture, LiDAR depth]
+    WEB[Web app<br/>desktop and mobile browser]
+    EXT[Other scanner apps<br/>Polycam, Scaniverse, ...]
   end
 
-  UP[Web app<br/>upload + review] -->|REST| API[API service<br/>FastAPI]
-  API --> DB[(SQLite<br/>jobs, stages)]
-  API --> FS[(Local file store<br/>data/jobs/&lt;id&gt;)]
-  W[Pipeline worker] --> DB
-  W --> FS
-  W --> R{Reconstructor<br/>adapter}
-  R --> R1[Apple PhotogrammetrySession<br/>macOS CLI]
-  R --> R2[COLMAP + OpenMVS<br/>Docker]
-  W --> P[Mesh pipeline<br/>Python package]
+  subgraph VPS[Hetzner VPS, docker compose]
+    CADDY[Caddy<br/>TLS, body limits] --> API[API service<br/>FastAPI, auth]
+    API --> DB[(SQLite WAL<br/>jobs, stages, users)]
+    API --> FS[(Job files<br/>data/jobs/&lt;id&gt;)]
+    W[Pipeline worker<br/>claims jobs from SQLite] --> DB
+    W --> FS
+    W --> RC1[COLMAP sparse +<br/>OpenMVS CPU]
+    W --> P[Mesh pipeline]
+  end
+
+  MAC[Optional Mac worker<br/>Apple Object Capture] -->|pulls jobs over HTTPS| API
+  IOS -->|photo set + depth, or on-device mesh| CADDY
+  WEB -->|scan file or photo set| CADDY
+  EXT -->|file upload via web app| WEB
   P --> OUT[3MF + STL +<br/>validation report]
-  OUT --> UP
+  OUT --> WEB
+  OUT --> IOS
   AG[Agent skill<br/>scan-to-print] -.reads/writes stage artifacts.-> FS
 ```
 
-**Local-first.** Runs on the user's machine (`docker compose up`, plus an optional native macOS reconstructor). No cloud dependency, no accounts. A hosted variant can come later, the boundaries below allow it.
+**Hosted on your Hetzner VPS.** One `docker compose` stack: Caddy (TLS), API, worker, SQLite on a local volume. SQLite in WAL mode with a single worker process is a good fit for one VPS and one user or a small group. Do not run more than one writer host.
+
+### 3.1 Where does reconstruction run?
+
+This is the main constraint of the whole design, so it is spelled out.
+
+| Path | Runs on | Quality | Scale | Cost / limits |
+| --- | --- | --- | --- | --- |
+| A. On-device Object Capture | iPhone/iPad with LiDAR (A14+) | Reduced detail only | Metric (from sensors) | Free, no server compute. Needs the iOS app |
+| B. COLMAP sparse + OpenMVS densify/mesh/texture | The VPS, **CPU only** | Good for textured objects, slow | **No metric scale** unless poses come from the iOS bundle or a reference is given | A normal Hetzner VPS has no GPU. COLMAP's own dense stage needs CUDA, so use OpenMVS on CPU. Benchmark on the real VPS early (see #22) and cap image count/resolution |
+| C. Apple Object Capture, full detail | A Mac (Apple Silicon) acting as an **optional remote worker** that pulls jobs from the API | Best | Metric | Needs a Mac you own. Object Capture does not run on Linux, so never on the VPS |
+| D. GPU server | Hetzner dedicated GEX line | Fast COLMAP/OpenMVS with CUDA | As B | Dedicated server, not a VPS. Roughly 214 EUR/month plus a one-time setup fee excl. VAT at the time of writing (verify). Not recommended until A to C prove insufficient |
+
+**Recommendation:** ship A and B in phase 1, C as an optional last step. Revisit D only with real timing data from B.
 
 ## 4. Components
 
@@ -76,9 +95,11 @@ flowchart LR
 
 ### 4.2 `services/api`: FastAPI service
 
-- Thin HTTP layer: jobs, uploads, stage parameters, artifact download.
-- Owns the **OpenAPI contract**. TypeScript types for the web app are generated from it (`openapi-typescript`), never hand-written.
-- Persists job and stage state in SQLite. Stores files under `data/jobs/<jobId>/`.
+- HTTP layer: auth, jobs, uploads, stage parameters, artifact download, and a worker protocol for remote workers (claim, heartbeat, upload result).
+- Owns the **OpenAPI contract**. TypeScript types for the web app are generated from it (`openapi-typescript`), never hand-written. The iOS app uses the same OpenAPI document (generated Swift client or a small hand-written client checked against it).
+- Persists job and stage state in SQLite (WAL). Stores files under `data/jobs/<jobId>/`.
+- **Auth is required now** because the service is reachable on the internet: session login for the web app, per-device API tokens for the iOS app and remote workers (see #32).
+- **Large uploads:** photo sets can be several hundred MB. Use resumable uploads and per-user quotas with retention cleanup (see #33).
 
 ### 4.3 `services/pipeline`: mesh pipeline (Python package)
 
@@ -103,7 +124,7 @@ ingest -> reconstruct? -> normalize -> clean -> repair -> scale -> orient -> dec
 
 **[Decision] Python for the pipeline.** The mesh processing ecosystem (trimesh, PyMeshLab, manifold3d, Open3D, lib3mf) is far stronger in Python than in .NET or TypeScript. C# was considered (the maintainer's other stack), but would mean writing repair algorithms ourselves.
 
-### 4.4 Reconstructor adapters (photo input only)
+### 4.4 Reconstructor adapters (photo input)
 
 ```python
 class Reconstructor(Protocol):
@@ -112,18 +133,26 @@ class Reconstructor(Protocol):
     def reconstruct(self, images_dir: Path, out_dir: Path, opts: ReconstructOptions) -> ReconstructResult: ...
 ```
 
-| Adapter | Where it runs | Pros | Cons |
-| --- | --- | --- | --- |
-| `apple-object-capture` | macOS (Apple Silicon), small Swift CLI using `PhotogrammetrySession` | Best quality, uses LiDAR depth for scale, "full"/"raw" detail on Mac | Mac only |
-| `colmap-openmvs` | Docker (CPU, CUDA optional) | Cross-platform, open source | Slower, no metric scale without reference |
+| Adapter | Where it runs | Notes |
+| --- | --- | --- |
+| `colmap-openmvs` | VPS worker, CPU | Default for photo sets. No metric scale on its own |
+| `apple-object-capture` | Remote Mac worker (optional) | Full detail, metric scale. Picks up jobs flagged `reconstructor=apple` |
+| `ios-on-device` | Not an adapter: the iOS app uploads a finished USDZ, which enters at `ingest` | Reduced detail, metric scale |
 
-The worker picks the first available adapter, or the one the user selects.
+The worker picks the adapter requested by the job, or the first available one.
 
-### 4.5 `apps/capture-ios`: native capture app (phase 3, optional)
+### 4.5 `apps/capture-ios`: native capture app (phase 1)
 
-SwiftUI + RealityKit `ObjectCaptureSession` (guided capture, flip support, LiDAR depth). Requires iPhone/iPad with LiDAR and A14 or later. On-device reconstruction is reduced detail only, so the app **exports the raw image set + depth + a manifest** (`capture-bundle/1`) and lets the Mac adapter do full-detail reconstruction.
+SwiftUI + RealityKit `ObjectCaptureSession` (guided capture, flip support, LiDAR depth). Requires iPhone/iPad with LiDAR and A14 or later. Two upload modes:
 
-Built last on purpose: existing free scanner apps already cover capture, so the native app is only worth it once the pipeline proves itself.
+1. **On-device mesh:** reconstruct on the phone (reduced detail), upload the USDZ. Fast, metric scale.
+2. **Raw bundle:** upload images, depth, ARKit camera poses and a manifest (`capture-bundle/1`) for server or Mac reconstruction. Better detail, and the poses can give COLMAP a metric scale (research task #35).
+
+The app logs in with a device token (#32), uploads with resumable uploads (#33), polls job status, and shows the result with a share sheet for the 3MF (open in Bambu Studio on a Mac or via Files).
+
+Practical constraints: building and signing needs a Mac with Xcode and an Apple Developer account (TestFlight for distribution, see #34). Claude can write the Swift code via issues, but cannot run it, so every iOS PR needs a manual device test by you.
+
+The web app also accepts photo sets from a **mobile browser** (multi-select file input). That is plain upload, not guided capture.
 
 ### 4.6 `.agents/skills/scan-to-print`: agent skill
 
@@ -190,7 +219,7 @@ data/jobs/<jobId>/
           api/                   generated OpenAPI types + fetch client
           ui/                    presentational components
           styles/                tokens, global CSS
-    capture-ios/                 phase 3, Swift
+    capture-ios/                 phase 1, Swift
   services/
     api/                         FastAPI app (routes, schemas, persistence)
     pipeline/                    Python package
@@ -201,7 +230,7 @@ data/jobs/<jobId>/
         models.py                Mesh, StageResult, Report types
       tests/
         fixtures/                small reference meshes
-    reconstructor-macos/         Swift CLI wrapping PhotogrammetrySession
+    reconstructor-macos/         optional remote Mac worker, Swift CLI wrapping PhotogrammetrySession
   packages/
     printer-profiles/            JSON printer definitions
   .agents/skills/scan-to-print/  SKILL.md + scripts + references
@@ -210,21 +239,23 @@ data/jobs/<jobId>/
     IMPLEMENTATION_PLAN.md
     adr/                         architecture decision records
   data/                          gitignored, local jobs
-  docker-compose.yml
+  deploy/                        docker-compose.yml, Caddyfile, backup scripts, runbook
   CLAUDE.md
 ```
 
 ## 8. Cross-cutting concerns
 
-- **Testing:** pipeline stages are unit-tested against small fixture meshes (cube with hole, non-manifold mesh, mis-scaled mesh). Golden tests check the 3MF output parses and is manifold. Web uses Vitest + Testing Library. API has contract tests.
-- **CI:** GitHub Actions. Lint + typecheck + tests for web, ruff + mypy + pytest for Python.
-- **Observability:** each stage writes timings and metrics in `report.json`. Logs are structured JSON.
-- **Security:** local-only by default (bind to 127.0.0.1). Upload size limits, zip-slip protection on archive extraction, no execution of uploaded content.
-- **Performance:** large scans are processed in the worker, never in the API request. The viewer always loads the decimated `preview.glb`, not the full mesh.
+- **Testing:** pipeline stages are unit-tested against small fixture meshes (cube with hole, non-manifold mesh, mis-scaled mesh). Golden tests check the 3MF output parses and is manifold. Web uses Vitest + Testing Library. API has contract tests. iOS has unit tests for the client and manifest code, plus a manual device checklist.
+- **CI:** GitHub Actions. Lint + typecheck + tests for web, ruff + mypy + pytest for Python, `xcodebuild` on a macOS runner for iOS (build and unit tests only).
+- **Observability:** each stage writes timings and metrics in `report.json`. Structured JSON logs. Uptime check and disk-space alert on the VPS.
+- **Security (hosted):** TLS only (Caddy), auth on every route except health, upload size limits at Caddy and API, zip-slip protection on archives, no execution of uploaded content, rate limiting on login and upload, worker and pipeline run as a non-root container user with CPU/memory limits and per-job timeouts. Mesh and photo parsers handle untrusted input, so keep their dependencies updated.
+- **Backups and retention:** SQLite backed up continuously or nightly (for example Litestream or `sqlite3 .backup`) to a separate location such as a Hetzner Storage Box or S3-compatible storage. Job files are expendable after a retention period, 3MF exports are kept longer.
+- **Performance:** all mesh and photogrammetry work runs in the worker, never in an API request. The viewer always loads the decimated `preview.glb`, not the full mesh. Reconstruction jobs are queued one at a time on the VPS to avoid running out of RAM.
 
 ## 9. Open questions
 
-1. Is local-first enough, or is a hosted version a goal? (Affects auth, storage, queue choice.)
-2. Is multi-color (AMS) output a must-have or a nice-to-have?
-3. Primary capture device: iPhone with LiDAR, Android, or a regular camera?
-4. Main use case: decorative objects (scan fidelity matters) or functional parts (dimensional accuracy matters)? This decides how early the parametric remodel path is needed.
+1. VPS size: how many vCPUs and how much RAM and disk? OpenMVS densify is memory hungry, so this decides the image count and resolution limits. Please share the plan.
+2. Users: only you, or a few people? This decides how much auth and quota work is needed.
+3. Do you have a Mac and an Apple Developer account (99 USD/year) for building and distributing the iOS app? Without both, phase 1d cannot ship.
+4. Is multi-color (AMS) output a must-have or a nice-to-have?
+5. Main use case: decorative objects (scan fidelity matters) or functional parts (dimensional accuracy matters)?
