@@ -69,16 +69,25 @@ flowchart LR
 
 ### 3.1 Where does reconstruction run?
 
-This is the main constraint of the whole design, so it is spelled out.
+This is the main constraint of the whole design, so it is spelled out. The VPS is a **4 GB RAM Ampere (arm64)** server, so it is the weakest compute option, not the strongest.
 
-| Path | Runs on | Quality | Scale | Cost / limits |
+| Path | Runs on | Quality | Scale | Notes |
 | --- | --- | --- | --- | --- |
-| A. On-device Object Capture | iPhone/iPad with LiDAR (A14+) | Reduced detail only | Metric (from sensors) | Free, no server compute. Needs the iOS app |
-| B. COLMAP sparse + OpenMVS densify/mesh/texture | The VPS, **CPU only** | Good for textured objects, slow | **No metric scale** unless poses come from the iOS bundle or a reference is given | A normal Hetzner VPS has no GPU. COLMAP's own dense stage needs CUDA, so use OpenMVS on CPU. Benchmark on the real VPS early (see #22) and cap image count/resolution |
-| C. Apple Object Capture, full detail | A Mac (Apple Silicon) acting as an **optional remote worker** that pulls jobs from the API | Best | Metric | Needs a Mac you own. Object Capture does not run on Linux, so never on the VPS |
-| D. GPU server | Hetzner dedicated GEX line | Fast COLMAP/OpenMVS with CUDA | As B | Dedicated server, not a VPS. Roughly 214 EUR/month plus a one-time setup fee excl. VAT at the time of writing (verify). Not recommended until A to C prove insufficient |
+| A. On-device Object Capture | iPhone/iPad with LiDAR (A14+) | Reduced detail only | Metric (from sensors) | No server compute. Needs the iOS app |
+| C. Apple Object Capture, full detail | The maintainer's **Mac** (Apple Silicon) as a **remote worker** that pulls jobs from the API | Best | Metric | **Primary path for good photo reconstruction.** Object Capture does not run on Linux, so never on the VPS. The Mac must be on and awake for jobs to run |
+| B. COLMAP sparse + OpenMVS (CPU) | The VPS | Acceptable for small, well-textured sets | **No metric scale** unless poses come from the iOS bundle (#35) or a reference dimension is given | **Fallback with strict limits** (see 3.2). COLMAP's own dense stage needs CUDA, so OpenMVS runs on CPU. No official arm64 images, so both are built from source for arm64 |
+| D. Bigger or GPU server | Hetzner larger cloud server, or dedicated GEX line | Fast | As B | Not planned. A GEX45 was about 214 EUR/month plus setup excl. VAT at the time of writing (verify). Only consider with real data from B |
 
-**Recommendation:** ship A and B in phase 1, C as an optional last step. Revisit D only with real timing data from B.
+**Recommendation:** ship A and C as the main photo paths and B as a limited fallback, all in phase 1. Revisit D only if B and C prove insufficient.
+
+### 3.2 Hosting constraints (4 GB RAM, Ampere arm64)
+
+- **Memory budget:** roughly 1 GB for OS, Caddy, API and SQLite, leaving about 3 GB for one job at a time. Add a swap file as a safety net (slow, not a plan). Jobs run with a memory limit so one bad upload cannot take the whole server down.
+- **Photo fallback limits (starting points, to be set by the benchmark in #22):** about 20 to 40 images, downscaled to roughly 1600 px on the long side, OpenMVS resolution level 1 or 2. OpenMVS memory use grows quickly with image size and count, and densify is the usual out-of-memory step.
+- **Mesh pipeline limits:** scans can have millions of faces. Decimate to a working size right after `ingest` (before repair) so PyMeshLab never sees a huge mesh. Reject or pre-simplify inputs above a face and file-size limit.
+- **arm64 compatibility (checked against PyPI):** wheels exist for `pymeshlab` (needs glibc 2.35 or newer, so use Ubuntu 22.04 or newer as base image), `manifold3d`, `usd-core`, `numpy`, `scipy`, `trimesh`, `fast-simplification`, `pymeshfix`, `pillow-heif`. **No aarch64 Linux wheel for `lib3mf`**, so the production 3MF writer is our own small writer (core spec) and `lib3mf` is only a validator in x86_64 CI and local tests. Re-check versions when building, wheels change.
+- **Images:** all containers must be multi-arch or arm64. Developer Macs on Apple Silicon are also arm64, so local and VPS images match.
+- **Queue fairness:** with a few invited users, one job runs at a time and the UI shows queue position.
 
 ## 4. Components
 
@@ -115,12 +124,12 @@ ingest -> reconstruct? -> normalize -> clean -> repair -> scale -> orient -> dec
 | `reconstruct` | photo set | Delegate to a `Reconstructor` adapter (only for photo input) | adapters |
 | `normalize` | mesh | Units to mm, +Z up (Bambu convention), center on origin | `trimesh` |
 | `clean` | mesh | Remove ground plane / turntable, keep largest component(s), drop floaters | `trimesh`, `pymeshlab` |
-| `repair` | mesh | Fill holes, fix normals and winding, remove self-intersections, make watertight | `pymeshlab`, `manifold3d` |
+| `repair` | mesh | Fill holes, fix normals and winding, remove self-intersections, make watertight | `pymeshlab`, `pymeshfix`, `manifold3d` |
 | `scale` | mesh | Apply metric scale from LiDAR metadata or user reference dimension | `numpy` |
 | `orient` | mesh | Find a stable flat base (convex hull faces), optional planar base cut, drop to Z=0 | `trimesh` |
-| `decimate` | mesh | Quadric decimation to target face count with max deviation check | `pymeshlab` |
+| `decimate` | mesh | Quadric decimation to target face count with max deviation check. Also runs early as a cheap pre-simplify on huge inputs to protect memory | `pymeshlab`, `fast-simplification` |
 | `validate` | mesh | Manifold, watertight, volume > 0, fits printer bed, min feature hints | `trimesh`, `manifold3d` |
-| `export` | mesh | Write 3MF (core spec, `unit="millimeter"`) and STL | `lib3mf` |
+| `export` | mesh | Write 3MF (core spec, `unit="millimeter"`) and STL with our own writer (no `lib3mf` on arm64) | `lxml` or stdlib `zipfile` + `xml`; `lib3mf` only in tests |
 
 **[Decision] Python for the pipeline.** The mesh processing ecosystem (trimesh, PyMeshLab, manifold3d, Open3D, lib3mf) is far stronger in Python than in .NET or TypeScript. C# was considered (the maintainer's other stack), but would mean writing repair algorithms ourselves.
 
@@ -196,7 +205,7 @@ data/jobs/<jobId>/
 ### 5.3 3MF output
 
 - Core 3MF spec, `unit="millimeter"`, one object per mesh, metadata (`Title`, `Application`, `CreationDate`).
-- Validated by re-reading with `lib3mf` and by an import smoke test in Bambu Studio (manual checklist until automated).
+- Validated by re-reading with `lib3mf` in x86_64 CI and local tests (no arm64 Linux wheel exists), and by an import smoke test in Bambu Studio (manual checklist until automated).
 - **Not in MVP:** Bambu project 3MF (plates, `Metadata/model_settings.config`, filament settings) and multi-color painting. Both are tracked as research issues.
 
 ## 6. Printer profiles
@@ -252,10 +261,15 @@ data/jobs/<jobId>/
 - **Backups and retention:** SQLite backed up continuously or nightly (for example Litestream or `sqlite3 .backup`) to a separate location such as a Hetzner Storage Box or S3-compatible storage. Job files are expendable after a retention period, 3MF exports are kept longer.
 - **Performance:** all mesh and photogrammetry work runs in the worker, never in an API request. The viewer always loads the decimated `preview.glb`, not the full mesh. Reconstruction jobs are queued one at a time on the VPS to avoid running out of RAM.
 
-## 9. Open questions
+## 9. Decisions and open questions
 
-1. VPS size: how many vCPUs and how much RAM and disk? OpenMVS densify is memory hungry, so this decides the image count and resolution limits. Please share the plan.
-2. Users: only you, or a few people? This decides how much auth and quota work is needed.
-3. Do you have a Mac and an Apple Developer account (99 USD/year) for building and distributing the iOS app? Without both, phase 1d cannot ship.
-4. Is multi-color (AMS) output a must-have or a nice-to-have?
-5. Main use case: decorative objects (scan fidelity matters) or functional parts (dimensional accuracy matters)?
+**Decided**
+- Hosted on a Hetzner VPS: 4 GB RAM, Ampere (arm64). Confirm the exact plan and vCPU count with `nproc` and `free -m`, the benchmark depends on it.
+- Users: a few invited people. No public sign-up, invite by CLI or link, small per-user quotas.
+- The maintainer has a Mac and an Apple Developer account, so the iOS app and the Mac worker are unblocked.
+
+**Still open**
+1. Is multi-color (AMS) output a must-have or a nice-to-have? (Research task #28.)
+2. Main use case: decorative objects (scan fidelity matters) or functional parts (dimensional accuracy matters)?
+3. Will the Mac be on during processing, or should photo jobs fall back to the VPS limits when it is offline?
+4. Which Bambu Lab printer(s) and Bambu Studio version should the import checklist (#14) target first?

@@ -23,7 +23,7 @@ Phase 1 is large, so it is split into four milestones that can overlap once the 
 | --- | --- | --- | --- |
 | 1a | #2 | Pipeline stages and CLI (scan file to 3MF) | A scan file becomes a valid 3MF from the CLI |
 | 1b | #2 | Hosted platform: API, auth, uploads, worker, web app, VPS deployment | Upload a scan file in the browser on the VPS and download a 3MF that imports into Bambu Studio correctly |
-| 1c | #3 | Photos to mesh: COLMAP + OpenMVS on the VPS CPU, capture guide, optional remote Mac worker | A photo set uploaded from the web app becomes a printable 3MF, with measured timings recorded |
+| 1c | #3 | Photos to mesh: remote Mac worker (primary), COLMAP + OpenMVS on the 4 GB arm64 VPS (limited fallback), capture guide | A photo set uploaded from the web app becomes a printable 3MF via the Mac worker, and a small set via the VPS fallback, with measured timings recorded |
 | 1d | #4 | Native iOS app with Object Capture, on-device and raw-bundle upload, TestFlight | Capture on iPhone, get a printable 3MF back in the app without using a computer |
 
 **Phase 1 exit:** the Bambu Studio checks from #14 pass for a scan file, a photo set and an iPhone capture, all through the VPS.
@@ -59,10 +59,10 @@ Agent skill, parametric remodel for functional parts, oversize splitting, multi-
 | 19 | 1b | Web: 3D viewer with stage compare and issue overlays | 18 |
 | 20 | 1b | Web: interactive fixes and re-run from stage | 19, 17 |
 | 21 | 1b | Deploy to the Hetzner VPS (compose, TLS, backups, limits) | 17, 18 |
-| 22 | 1c | Reconstructor interface + COLMAP/OpenMVS CPU adapter | 17, 33 |
+| 22 | 1c | Reconstructor interface + COLMAP/OpenMVS arm64 CPU fallback adapter (4 GB limits) | 17, 33, 23 |
 | 24 | 1c | Capture guide documentation | 22 |
 | 35 | 1c | Spike: metric scale for COLMAP from ARKit poses | 22 |
-| 23 | 1c | Optional remote Mac worker (Apple Object Capture) | 22, 32 |
+| 23 | 1c | Remote Mac worker (Apple Object Capture), primary full-detail photo path | 17, 32 |
 | 25 | 1d | iOS capture app (on-device and raw-bundle upload) | 16, 32, 33 |
 | 34 | 1d | iOS CI and TestFlight distribution | 25 |
 | 26 | Phase 2 | Agent skill: scan-to-print | 15 |
@@ -77,7 +77,9 @@ Chains: 9 to 15 is sequential. 16, 32, 33 and 18 can run in parallel with it. 22
 
 | Risk | Why | Mitigation |
 | --- | --- | --- |
-| CPU photogrammetry too slow or out of memory on the VPS | No GPU on a VPS. COLMAP dense needs CUDA, OpenMVS CPU is slower | #22 records real timings, caps images and resolution, runs one job at a time. Fallbacks: iOS on-device mesh, Mac worker, GPU server |
+| Photogrammetry on a 4 GB arm64 VPS runs out of memory or is very slow | No GPU, little RAM. COLMAP dense needs CUDA, OpenMVS CPU is slow and memory hungry, no official arm64 images | Mac worker is the primary photo path. VPS is a fallback with strict limits (about 20 to 40 images, downscaled), measured in #22. Also iOS on-device mesh. Bigger server only if needed |
+| Mac worker offline | Personal machine can be asleep | Jobs wait with a visible reason, user can choose VPS fallback per job |
+| arm64 library gaps | `lib3mf` has no aarch64 Linux wheel, COLMAP/OpenMVS have no arm64 images | Own 3MF writer (lib3mf only in tests), build COLMAP/OpenMVS from source for arm64 in CI. Check wheels again when building |
 | No metric scale from photos | Photos alone have no scale | iOS bundle with ARKit poses (#35), reference dimension in UI (#20), printed scale card (#24) |
 | iOS work cannot be verified by Claude | Needs Xcode, a device and an Apple Developer account | Keep the Swift code thin, unit-test client and manifest logic, manual device checklist per PR |
 | Phase 1 is large | Four clients and a hosted platform | Milestones 1a to 1d, with a working demo after each |
