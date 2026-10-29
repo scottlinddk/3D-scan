@@ -26,7 +26,7 @@ Phase 1 is large, so it is split into four milestones that can overlap once the 
 | 1c | #3 | Photos to mesh: remote Mac worker (primary), COLMAP + OpenMVS on the 4 GB arm64 VPS (limited fallback), capture guide | A photo set uploaded from the web app becomes a printable 3MF via the Mac worker, and a small set via the VPS fallback, with measured timings recorded |
 | 1d | #4 | Native iOS app with Object Capture, on-device and raw-bundle upload, TestFlight | Capture on iPhone, get a printable 3MF back in the app without using a computer |
 
-**Phase 1 exit:** the Bambu Studio checks from #14 pass for a scan file, a photo set and an iPhone capture, all through the VPS.
+**Phase 1 exit:** the Bambu Studio checks from #14 pass on the **Bambu Lab P1S** for a scan file, a photo set and an iPhone capture, all through the VPS.
 
 ### Phase 2: Quality and advanced output
 Agent skill, parametric remodel for functional parts, oversize splitting, multi-color and Bambu project 3MF research.

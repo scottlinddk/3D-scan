@@ -267,9 +267,10 @@ data/jobs/<jobId>/
 - Hosted on a Hetzner VPS: 4 GB RAM, Ampere (arm64). Confirm the exact plan and vCPU count with `nproc` and `free -m`, the benchmark depends on it.
 - Users: a few invited people. No public sign-up, invite by CLI or link, small per-user quotas.
 - The maintainer has a Mac and an Apple Developer account, so the iOS app and the Mac worker are unblocked.
+- **The Mac is usually on**, so the Mac worker is the default for photo jobs (`reconstructor=auto` prefers it). Offline handling stays (job waits with a visible reason, user can switch to the VPS fallback), but it is the exception, not the main flow.
+- **First target printer: Bambu Lab P1S** (build volume 256 x 256 x 256 mm, to be re-verified in the printer profile, #8). The import checklist (#14) and the printer profile are done for the P1S first. Other printers follow as data-only profiles.
+- **Multi-color via AMS is a nice-to-have, not a must-have.** The MVP stays single-material geometry. Color remains a research task (#28) in phase 2. Users can assign filaments in Bambu Studio by hand.
 
 **Still open**
-1. Is multi-color (AMS) output a must-have or a nice-to-have? (Research task #28.)
-2. Main use case: decorative objects (scan fidelity matters) or functional parts (dimensional accuracy matters)?
-3. Will the Mac be on during processing, or should photo jobs fall back to the VPS limits when it is offline?
-4. Which Bambu Lab printer(s) and Bambu Studio version should the import checklist (#14) target first?
+1. Main use case: decorative objects (scan fidelity matters) or functional parts (dimensional accuracy matters)? This decides how early the parametric remodel path (#27) is needed.
+2. Which Bambu Studio version is installed on the Mac, so the import checklist records it?
