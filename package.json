@@ -1,0 +1,21 @@
+{
+  "name": "3d-scan",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Scan a physical object and get a print-ready 3MF for Bambu Studio.",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @3d-scan/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint && pnpm lint:py",
+    "lint:py": "uv run ruff check . && uv run ruff format --check . && uv run mypy",
+    "format": "pnpm -r format && uv run ruff format .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:py": "uv run pytest",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:py"
+  }
+}
