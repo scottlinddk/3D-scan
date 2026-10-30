@@ -274,3 +274,20 @@ data/jobs/<jobId>/
 **Still open**
 1. Main use case: decorative objects (scan fidelity matters) or functional parts (dimensional accuracy matters)? This decides how early the parametric remodel path (#27) is needed.
 2. Which Bambu Studio version is installed on the Mac, so the import checklist records it?
+
+### Pipeline runner API
+
+The initial runner is `scan3d_pipeline.runner.run(stages, mesh, job_dir, params,
+start_from=None)`. Stages implement the `Stage` protocol and return a
+`StageResult` with a `Mesh` wrapper and a `StageReport`. Inputs and parameter
+dictionaries are copied before each stage. Reports record metrics, warnings,
+the parameters actually supplied, and duration in seconds.
+
+Stage directories use one-based numbering, for example `01-identity`.
+Resuming from a later stage loads the previous stage's `mesh.ply` and leaves
+earlier files untouched. PLY reload uses `process=False` to avoid implicit
+mesh repair. PLY stores float32 coordinates, so reruns have that precision.
+The initial GLB preview contains the stage mesh; preview simplification will
+be introduced with the decimation stage. The caller manages `job.json`,
+`input/`, job status and export lifecycle. Stage execution is sequential;
+a failed stage raises to the caller and does not execute subsequent stages.
