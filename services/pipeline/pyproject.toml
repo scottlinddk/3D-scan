@@ -3,7 +3,11 @@ name = "scan3d-pipeline"
 version = "0.0.0"
 description = "Mesh pipeline that turns scans into print-ready 3MF files."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "networkx>=3.7",
+    "numpy>=2.5.4",
+    "trimesh>=5.2.0",
+]
 
 [build-system]
 requires = ["hatchling"]
