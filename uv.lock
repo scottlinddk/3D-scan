@@ -11,6 +11,7 @@ members = [
     "3d-scan-workspace",
     "scan3d-api",
     "scan3d-pipeline",
+    "scan3d-reconstructor",
 ]
 
 [[package]]
@@ -20,6 +21,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "scan3d-api" },
     { name = "scan3d-pipeline" },
+    { name = "scan3d-reconstructor" },
 ]
 
 [package.dev-dependencies]
@@ -34,6 +36,7 @@ dev = [
 requires-dist = [
     { name = "scan3d-api", editable = "services/api" },
     { name = "scan3d-pipeline", editable = "services/pipeline" },
+    { name = "scan3d-reconstructor", editable = "services/reconstructor-macos" },
 ]
 
 [package.metadata.requires-dev]
@@ -789,6 +792,21 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "pillow", specifier = ">=13.0.0" },
     { name = "trimesh", specifier = ">=5.2.0" },
+]
+
+[[package]]
+name = "scan3d-reconstructor"
+version = "0.0.0"
+source = { editable = "services/reconstructor-macos" }
+dependencies = [
+    { name = "httpx" },
+    { name = "scan3d-pipeline" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "scan3d-pipeline", editable = "services/pipeline" },
 ]
 
 [[package]]

@@ -3,7 +3,7 @@ name = "3d-scan-workspace"
 version = "0.0.0"
 description = "Workspace root for the 3d-scan Python services."
 requires-python = ">=3.12"
-dependencies = ["scan3d-api", "scan3d-pipeline"]
+dependencies = ["scan3d-api", "scan3d-pipeline", "scan3d-reconstructor"]
 
 [dependency-groups]
 dev = [
@@ -17,11 +17,12 @@ dev = [
 package = false
 
 [tool.uv.workspace]
-members = ["services/api", "services/pipeline"]
+members = ["services/api", "services/pipeline", "services/reconstructor-macos"]
 
 [tool.uv.sources]
 scan3d-api = { workspace = true }
 scan3d-pipeline = { workspace = true }
+scan3d-reconstructor = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -37,7 +38,7 @@ ignore = ["B008"]
 python_version = "3.12"
 strict = true
 files = ["services"]
-mypy_path = ["services/api/src", "services/pipeline/src"]
+mypy_path = ["services/api/src", "services/pipeline/src", "services/reconstructor-macos/src"]
 explicit_package_bases = true
 namespace_packages = true
 
