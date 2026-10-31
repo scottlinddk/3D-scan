@@ -69,3 +69,29 @@ class TokenCreate(BaseModel):
 class TokenOut(BaseModel):
     id: str
     token: str
+
+
+class UploadCreate(BaseModel):
+    filename: str = Field(min_length=1, max_length=255)
+    size: int = Field(gt=0)
+    kind: Literal["original", "photo", "capture_bundle"] = "original"
+    sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+
+class Upload(BaseModel):
+    id: str
+    job_id: str
+    filename: str
+    size: int
+    offset: int
+    status: Literal["open", "complete"]
+
+
+class Artifact(BaseModel):
+    id: str
+    job_id: str
+    kind: str
+    filename: str
+    size: int
+    sha256: str
+    protected: bool

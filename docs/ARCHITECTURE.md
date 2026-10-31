@@ -86,6 +86,8 @@ FastAPI handles authenticated jobs, bounded resumable uploads, parameters, revie
 
 **Auth (#32), implemented:** invite-only accounts (`python -m scan3d_api.admin invite --admin` bootstraps the first admin), scrypt password hashes, HttpOnly SameSite=Strict session cookies with a per-session CSRF header on unsafe methods, and hashed bearer tokens of kind `device` (jobs and uploads) or `worker` (claim and complete only). Jobs are owned and invisible to other users. Not yet implemented: login rate limiting.
 
+**Uploads and retention (#33), implemented:** `POST /api/jobs/{id}/uploads` declares filename, size and optional sha256; the client `PATCH`es chunks at the offset the server reports (409 carries the real offset, so a lost response resumes cleanly). `complete` checks size and hash, then publishes atomically into `files/artifacts/<job>/<id>`. Disk paths come from ids, never filenames. Limits (file size, per-user quota, chunk size) are in `limits.py` and are planning values until #21. `python -m scan3d_api.retention [--dry-run]` drops stale open uploads and unprotected intermediates older than 30 days, and never an artifact that a protected one names as its parent.
+
 Worker results require the current lease and expected input revision. Expired or duplicate completions cannot advance a job. Cancellation occurs between stages and through subprocess termination for external tools. API requests never perform mesh processing. Uploaded archives and tool invocations use safe paths, fixed executable adapters and structured arguments.
 
 ### 4.3 `services/pipeline`
