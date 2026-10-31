@@ -19,6 +19,9 @@ final class AppModel: ObservableObject {
     }
 
     @Published var phase: Phase
+    /// A link waiting for the user to confirm its server. Nothing is stored until they do.
+    @Published var pendingLink: PairingLink?
+    var pairedHost: String? { pairing?.server.host }
     private let pairingStore = KeychainPairingStore()
     private var pairing: PairingLink?
 
@@ -27,11 +30,19 @@ final class AppModel: ObservableObject {
         phase = pairing == nil ? .needsPairing : .ready
     }
 
-    func pair(url: URL) {
+    /// Called for deep links and pasted text. Never pairs on its own: a crafted link must not be
+    /// able to point the app (and the photos it uploads) at someone else's server.
+    func receive(url: URL) {
         guard let link = PairingLink(url: url) else {
             phase = .failed("That is not a valid pairing link.")
             return
         }
+        pendingLink = link
+    }
+
+    func confirmPending() {
+        guard let link = pendingLink else { return }
+        pendingLink = nil
         do {
             try pairingStore.save(link)
             pairing = link
@@ -40,6 +51,8 @@ final class AppModel: ObservableObject {
             phase = .failed("Could not store the pairing: \(error.localizedDescription)")
         }
     }
+
+    func rejectPending() { pendingLink = nil }
 
     func unpair() {
         pairingStore.clear()
