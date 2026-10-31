@@ -33,3 +33,4 @@ data/
 xcuserdata/
 DerivedData/
 *.xcuserstate
+.pnpm-store/

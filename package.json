@@ -16,6 +16,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:py": "uv run pytest",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:py"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:py",
+    "gen:api": "uv run python -m scan3d_api.openapi apps/web/openapi.json && pnpm --filter @3d-scan/web exec openapi-typescript openapi.json -o src/shared/api/schema.d.ts && pnpm --filter @3d-scan/web exec prettier --write openapi.json src/shared/api/schema.d.ts"
   }
 }
