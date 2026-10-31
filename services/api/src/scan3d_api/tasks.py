@@ -7,6 +7,8 @@ import os
 import secrets
 import sqlite3
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
 
@@ -78,6 +80,20 @@ def _leased(conn: sqlite3.Connection, task_id: str, token: str, p: auth.Principa
         raise HTTPException(409, "lease is not current")
     assert isinstance(row, sqlite3.Row)
     return row
+
+
+@contextmanager
+def lease_txn(
+    conn: sqlite3.Connection, task_id: str, token: str, p: auth.Principal
+) -> Iterator[sqlite3.Row]:
+    """Check the lease and apply the caller's writes in one write transaction (no TOCTOU)."""
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        yield _leased(conn, task_id, token, p)
+        conn.execute("COMMIT")
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
 
 
 @router.post("/jobs/{job_id}/tasks", status_code=201, operation_id="createTask")
@@ -203,9 +219,9 @@ def heartbeat(
     p: auth.Principal = Depends(auth.require("worker:claim")),
     conn: sqlite3.Connection = Depends(auth.get_db),
 ) -> HeartbeatResult:
-    row = _leased(conn, task_id, body.lease_token, p)
-    expires = (auth.now() + timedelta(seconds=body.extend_seconds)).isoformat()
-    conn.execute("UPDATE tasks SET lease_expires=? WHERE id=?", (expires, task_id))
+    with lease_txn(conn, task_id, body.lease_token, p) as row:
+        expires = (auth.now() + timedelta(seconds=body.extend_seconds)).isoformat()
+        conn.execute("UPDATE tasks SET lease_expires=? WHERE id=?", (expires, task_id))
     return HeartbeatResult(cancel_requested=bool(row["cancel_requested"]))
 
 
@@ -226,12 +242,12 @@ def complete(
     p: auth.Principal = Depends(auth.require("worker:claim")),
     conn: sqlite3.Connection = Depends(auth.get_db),
 ) -> Task:
-    row = _leased(conn, task_id, body.lease_token, p)
-    if body.input_revision != row["input_revision"]:
-        raise HTTPException(409, "input revision mismatch")
-    if row["cancel_requested"]:
-        return _finish(conn, task_id, "cancelled")
-    return _finish(conn, task_id, "succeeded", result=json.dumps(body.result))
+    with lease_txn(conn, task_id, body.lease_token, p) as row:
+        if body.input_revision != row["input_revision"]:
+            raise HTTPException(409, "input revision mismatch")
+        if row["cancel_requested"]:
+            return _finish(conn, task_id, "cancelled")
+        return _finish(conn, task_id, "succeeded", result=json.dumps(body.result))
 
 
 @router.post("/worker/tasks/{task_id}/fail", operation_id="failTask")
@@ -241,11 +257,11 @@ def fail(
     p: auth.Principal = Depends(auth.require("worker:claim")),
     conn: sqlite3.Connection = Depends(auth.get_db),
 ) -> Task:
-    row = _leased(conn, task_id, body.lease_token, p)
-    if row["cancel_requested"]:
-        return _finish(conn, task_id, "cancelled")
-    retry = body.retryable and row["attempts"] < row["max_attempts"]
-    return _finish(conn, task_id, "queued" if retry else "failed", error=body.error)
+    with lease_txn(conn, task_id, body.lease_token, p) as row:
+        if row["cancel_requested"]:
+            return _finish(conn, task_id, "cancelled")
+        retry = body.retryable and row["attempts"] < row["max_attempts"]
+        return _finish(conn, task_id, "queued" if retry else "failed", error=body.error)
 
 
 @router.get("/worker/tasks/{task_id}/inputs/{artifact_id}", operation_id="getTaskInput")
@@ -310,6 +326,7 @@ async def put_artifact(
         # Check the quota and record the artifact in one write transaction.
         conn.execute("BEGIN IMMEDIATE")
         try:
+            _leased(conn, task_id, x_lease_token, p)  # re-fence: the lease may have moved on
             if usage(conn, p.user_id) + size > limits.user_quota_bytes:
                 raise HTTPException(413, "storage quota exceeded")
             final = data_dir / rel

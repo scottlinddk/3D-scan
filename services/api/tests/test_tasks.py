@@ -176,3 +176,26 @@ def test_worker_artifacts_need_lease_and_recovery_cleans_up(h: Harness) -> None:
     assert not orphan.exists()
     assert len(report["orphan_files"]) == 1
     assert not any(Path(data_dir / "artifacts" / job).iterdir())
+
+
+def test_recovery_keeps_artifacts_that_survivors_derive_from(h: Harness) -> None:
+    user, worker, _, job = setup(h)
+    t = enqueue(user, job)
+    got = claim(worker)
+    assert got is not None
+    lease = {"x-lease-token": got["lease_token"]}
+    url = f"/api/worker/tasks/{t['id']}/artifacts"
+    out = worker.put(url, params={"filename": "a"}, content=b"a", headers=lease).json()
+    worker.post(
+        f"/api/worker/tasks/{t['id']}/fail", json={"lease_token": got["lease_token"], "error": "x"}
+    )
+    conn = db.connect(h.path)
+    conn.execute(
+        "INSERT INTO artifacts(id, job_id, owner_id, kind, filename, size, sha256, path,"
+        " parent_id, protected, created_at) VALUES ('kid',?,1,'tested','k',1,'0','p',?,1,'t')",
+        (job, out["id"]),
+    )
+    report = recovery.reconcile(conn, h.path.parent / "files")
+    conn.close()
+    assert report["dropped_artifacts"] == []
+    assert report["kept_referenced"] == [out["id"]]
