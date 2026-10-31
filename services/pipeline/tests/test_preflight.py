@@ -31,3 +31,9 @@ def test_flags_each_failure_mode(tmp_path: Path) -> None:
     assert "good.jpg" not in rep.retake
     assert rep.warnings  # far fewer than the minimum photo count
     assert rep.to_dict()["qc_version"] == "preflight/1"
+
+
+def test_oversized_image_is_flagged_without_decoding(tmp_path: Path) -> None:
+    Image.new("L", (12000, 12000)).save(tmp_path / "bomb.png", optimize=True)  # ~144 MP, tiny file
+    rep = run_preflight([tmp_path / "bomb.png"])
+    assert rep.photos[0].flags == ["oversized"]

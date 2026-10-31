@@ -20,6 +20,7 @@ DARK_FRACTION_MAX = 0.35  # share of pixels below 16
 BRIGHT_FRACTION_MAX = 0.35  # share of pixels above 240
 DUPLICATE_HAMMING_MAX = 2  # of 64 difference-hash bits
 MIN_PHOTOS = 20
+MAX_PIXELS = 100_000_000  # larger images are flagged without decoding
 
 
 @dataclass
@@ -62,11 +63,16 @@ def check_photo(path: Path) -> PhotoReport:
     rep = PhotoReport(name=path.name)
     try:
         with Image.open(path) as im:
-            im.load()
             rep.width, rep.height = im.size
+            # Check the declared size before decoding so a tiny file cannot expand into gigabytes.
+            if rep.width * rep.height > MAX_PIXELS:
+                rep.flags.append("oversized")
+                return rep
+            im.draft("L", (1024, 1024))  # JPEG: decode at reduced size
+            im.load()
             gray_img = im.convert("L")
             rep.dhash = dhash(im)
-    except (UnidentifiedImageError, OSError, SyntaxError):
+    except (UnidentifiedImageError, OSError, SyntaxError, Image.DecompressionBombError):
         rep.flags.append("corrupt")
         return rep
     if min(rep.width, rep.height) < MIN_SIDE_PX:
@@ -88,7 +94,7 @@ def run_preflight(paths: list[Path]) -> PreflightReport:
     seen: list[PhotoReport] = []
     # Sharpest first, so each near-duplicate group keeps its best photo.
     for photo in sorted(photos, key=lambda p: -p.sharpness):
-        if "corrupt" in photo.flags:
+        if {"corrupt", "oversized"} & set(photo.flags):
             continue
         twin = next(
             (s for s in seen if (s.dhash ^ photo.dhash).bit_count() <= DUPLICATE_HAMMING_MAX), None
