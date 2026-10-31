@@ -11,6 +11,7 @@ from scan3d_api import __version__, auth, db
 from scan3d_api.auth_routes import router as auth_router
 from scan3d_api.limits import Limits
 from scan3d_api.schemas import Health, Job, JobCreate, JobStatus
+from scan3d_api.tasks import router as tasks_router
 from scan3d_api.uploads import router as uploads_router
 
 
@@ -35,6 +36,7 @@ def create_app(
     db.init(app.state.db_path)
     app.include_router(auth_router)
     app.include_router(uploads_router)
+    app.include_router(tasks_router)
 
     @app.get("/api/health", operation_id="getHealth")
     def health() -> Health:

@@ -209,6 +209,143 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/jobs/{job_id}/tasks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Tasks */
+    get: operations["listTasks"];
+    put?: never;
+    /** Create Task */
+    post: operations["createTask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tasks/{task_id}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Cancel Task */
+    post: operations["cancelTask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/worker/claim": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Claim */
+    post: operations["claimTask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/worker/tasks/{task_id}/heartbeat": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Heartbeat */
+    post: operations["heartbeatTask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/worker/tasks/{task_id}/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Complete */
+    post: operations["completeTask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/worker/tasks/{task_id}/fail": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Fail */
+    post: operations["failTask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/worker/tasks/{task_id}/inputs/{artifact_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Task Input */
+    get: operations["getTaskInput"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/worker/tasks/{task_id}/artifacts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Put Artifact */
+    put: operations["putTaskArtifact"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/health": {
     parameters: {
       query?: never;
@@ -282,6 +419,74 @@ export interface components {
       /** Protected */
       protected: boolean;
     };
+    /** Claim */
+    Claim: {
+      /** Capabilities */
+      capabilities: string[];
+      /**
+       * Lease Seconds
+       * @default 60
+       */
+      lease_seconds: number;
+    };
+    /** ClaimResult */
+    ClaimResult: {
+      task?: components["schemas"]["ClaimedTask"] | null;
+    };
+    /** ClaimedTask */
+    ClaimedTask: {
+      /** Id */
+      id: string;
+      /** Job Id */
+      job_id: string;
+      /** Capability */
+      capability: string;
+      /** Input Revision */
+      input_revision: string;
+      state: components["schemas"]["TaskState"];
+      /** Attempts */
+      attempts: number;
+      /** Error */
+      error?: string | null;
+      /** Result */
+      result?: {
+        [key: string]: unknown;
+      } | null;
+      /** Lease Token */
+      lease_token: string;
+      /**
+       * Lease Expires
+       * Format: date-time
+       */
+      lease_expires: string;
+      /** Payload */
+      payload: {
+        [key: string]: unknown;
+      };
+    };
+    /** Complete */
+    Complete: {
+      /** Lease Token */
+      lease_token: string;
+      /** Input Revision */
+      input_revision: string;
+      /** Result */
+      result?: {
+        [key: string]: unknown;
+      };
+    };
+    /** Fail */
+    Fail: {
+      /** Lease Token */
+      lease_token: string;
+      /** Error */
+      error: string;
+      /**
+       * Retryable
+       * @default false
+       */
+      retryable: boolean;
+    };
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -296,6 +501,21 @@ export interface components {
       status: "ok";
       /** Version */
       version: string;
+    };
+    /** Heartbeat */
+    Heartbeat: {
+      /** Lease Token */
+      lease_token: string;
+      /**
+       * Extend Seconds
+       * @default 60
+       */
+      extend_seconds: number;
+    };
+    /** HeartbeatResult */
+    HeartbeatResult: {
+      /** Cancel Requested */
+      cancel_requested: boolean;
     };
     /** InviteCreate */
     InviteCreate: {
@@ -377,6 +597,39 @@ export interface components {
       /** Password */
       password: string;
     };
+    /** Task */
+    Task: {
+      /** Id */
+      id: string;
+      /** Job Id */
+      job_id: string;
+      /** Capability */
+      capability: string;
+      /** Input Revision */
+      input_revision: string;
+      state: components["schemas"]["TaskState"];
+      /** Attempts */
+      attempts: number;
+      /** Error */
+      error?: string | null;
+      /** Result */
+      result?: {
+        [key: string]: unknown;
+      } | null;
+    };
+    /** TaskCreate */
+    TaskCreate: {
+      /** Capability */
+      capability: string;
+      /** Input Revision */
+      input_revision: string;
+      /** Payload */
+      payload?: {
+        [key: string]: unknown;
+      };
+    };
+    /** @enum {string} */
+    TaskState: "queued" | "leased" | "succeeded" | "failed" | "cancelled";
     /** TokenCreate */
     TokenCreate: {
       /**
@@ -827,6 +1080,312 @@ export interface operations {
         };
         content: {
           "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  listTasks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Task"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  createTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Task"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  cancelTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Task"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  claimTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Claim"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ClaimResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  heartbeatTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Heartbeat"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HeartbeatResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  completeTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Complete"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Task"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  failTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Fail"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Task"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  getTaskInput: {
+    parameters: {
+      query?: never;
+      header: {
+        "x-lease-token": string;
+      };
+      path: {
+        task_id: string;
+        artifact_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  putTaskArtifact: {
+    parameters: {
+      query: {
+        filename: string;
+        kind?: string;
+        parent_id?: string | null;
+      };
+      header: {
+        "x-lease-token": string;
+      };
+      path: {
+        task_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Artifact"];
         };
       };
       /** @description Validation Error */
