@@ -76,17 +76,26 @@ def create_upload(
         raise HTTPException(404, "job not found")
     if body.size > limits.max_file_bytes:
         raise HTTPException(413, f"file exceeds {limits.max_file_bytes} bytes")
-    if usage(conn, p.user_id) + body.size > limits.user_quota_bytes:
-        raise HTTPException(413, "storage quota exceeded")
     upload_id, stamp = uuid.uuid4().hex, auth.now().isoformat()
     # Only the basename is kept, and only as metadata. Disk paths come from ids.
     name = PurePosixPath(body.filename.replace("\\", "/")).name or "file"
-    conn.execute(
-        "INSERT INTO uploads(id, job_id, owner_id, kind, filename, size, sha256, created_at,"
-        " updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-        (upload_id, job_id, p.user_id, body.kind, name, body.size, body.sha256, stamp, stamp),
-    )
-    conn.execute("UPDATE jobs SET status='uploading' WHERE id=? AND status='created'", (job_id,))
+    # Check and reserve in one write transaction so concurrent requests cannot both fit.
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        if usage(conn, p.user_id) + body.size > limits.user_quota_bytes:
+            raise HTTPException(413, "storage quota exceeded")
+        conn.execute(
+            "INSERT INTO uploads(id, job_id, owner_id, kind, filename, size, sha256, created_at,"
+            " updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            (upload_id, job_id, p.user_id, body.kind, name, body.size, body.sha256, stamp, stamp),
+        )
+        conn.execute(
+            "UPDATE jobs SET status='uploading' WHERE id=? AND status='created'", (job_id,)
+        )
+        conn.execute("COMMIT")
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
     part = partial_path(request.app.state.data_dir, upload_id)
     part.parent.mkdir(parents=True, exist_ok=True)
     part.touch()
@@ -114,15 +123,20 @@ async def append_chunk(
     row = _own_upload(conn, upload_id, p)
     if row["status"] != "open":
         raise HTTPException(409, "upload already complete")
-    if int(request.headers.get("content-length", "0")) > limits.max_chunk_bytes:
-        raise HTTPException(413, f"chunk exceeds {limits.max_chunk_bytes} bytes")
     if offset != row["received"]:
         raise HTTPException(409, f"offset mismatch, server has {row['received']}")
-    chunk = await request.body()
-    if not chunk or len(chunk) > limits.max_chunk_bytes:
-        raise HTTPException(422, "empty or oversized chunk")
-    if offset + len(chunk) > row["size"]:
-        raise HTTPException(422, "chunk exceeds declared size")
+    # Count while streaming so a missing or false Content-Length cannot buffer an oversized body.
+    limit = min(limits.max_chunk_bytes, row["size"] - offset)
+    parts: list[bytes] = []
+    total = 0
+    async for piece in request.stream():
+        total += len(piece)
+        if total > limit:
+            raise HTTPException(413, f"chunk exceeds {limit} bytes")
+        parts.append(piece)
+    if total == 0:
+        raise HTTPException(422, "empty chunk")
+    chunk = b"".join(parts)
     part = partial_path(request.app.state.data_dir, upload_id)
     # The DB offset is the truth. A crash may have left extra bytes on disk, so cut back to it.
     with part.open("r+b") as f:

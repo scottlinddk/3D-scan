@@ -31,6 +31,7 @@ def test_resume_complete_and_download(tmp_path: Path) -> None:
     stale = c.patch(url, params={"offset": 0}, content=DATA[:4096])
     assert stale.status_code == 409
     assert "4096" in stale.json()["detail"]
+    assert c.patch(url, params={"offset": 4096}, content=DATA[:5000]).status_code == 413
     assert c.get(url).json()["offset"] == 4096
     assert c.post(f"{url}/complete").status_code == 409  # incomplete
 
