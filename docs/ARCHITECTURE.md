@@ -84,6 +84,8 @@ The guided view presents the next unresolved decision: size, repair review, base
 
 FastAPI handles authenticated jobs, bounded resumable uploads, parameters, reviews and artifact access. SQLite stores ownership, job/stage states, worker capabilities, leases and committed artifact references. Extend the same contract for recipes, projects, print evidence and listings. Use scoped tokens for workers, cookie sessions with CSRF protection for web writes, and invite-only access (#16/#32/#33).
 
+**Auth (#32), implemented:** invite-only accounts (`python -m scan3d_api.admin invite --admin` bootstraps the first admin), scrypt password hashes, HttpOnly SameSite=Strict session cookies with a per-session CSRF header on unsafe methods, and hashed bearer tokens of kind `device` (jobs and uploads) or `worker` (claim and complete only). Jobs are owned and invisible to other users. Not yet implemented: login rate limiting.
+
 Worker results require the current lease and expected input revision. Expired or duplicate completions cannot advance a job. Cancellation occurs between stages and through subprocess termination for external tools. API requests never perform mesh processing. Uploaded archives and tool invocations use safe paths, fixed executable adapters and structured arguments.
 
 ### 4.3 `services/pipeline`

@@ -30,6 +30,8 @@ extend-exclude = ["apps", "docs", "node_modules"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "C4", "PT"]
+# FastAPI idiom: Depends(...) in argument defaults.
+ignore = ["B008"]
 
 [tool.mypy]
 python_version = "3.12"

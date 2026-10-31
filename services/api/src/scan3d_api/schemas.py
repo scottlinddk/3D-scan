@@ -34,3 +34,38 @@ class Job(BaseModel):
 class Health(BaseModel):
     status: Literal["ok"]
     version: str
+
+
+class Register(BaseModel):
+    invite: str
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=10, max_length=200)
+
+
+class Login(BaseModel):
+    email: str
+    password: str
+
+
+class Me(BaseModel):
+    user_id: int
+    is_admin: bool
+    csrf: str | None = None
+
+
+class InviteCreate(BaseModel):
+    is_admin: bool = False
+
+
+class InviteOut(BaseModel):
+    code: str
+
+
+class TokenCreate(BaseModel):
+    kind: Literal["device", "worker"]
+    label: str = Field(min_length=1, max_length=100)
+
+
+class TokenOut(BaseModel):
+    id: str
+    token: str
