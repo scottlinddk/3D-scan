@@ -1,0 +1,44 @@
+name: iOS
+
+# Swift package tests, device-SDK compile of the app, and the Mac worker CLI. Needs a macOS runner.
+on:
+  pull_request:
+    paths:
+      - "apps/capture-ios/**"
+      - "services/reconstructor-macos/object-capture-cli/**"
+      - ".github/workflows/ios.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/capture-ios/**"
+      - "services/reconstructor-macos/object-capture-cli/**"
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  capture-ios:
+    name: capture-ios (swift test, device build)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Unit tests (CaptureKit)
+        run: swift test --package-path apps/capture-ios
+      # ObjectCaptureSession is not in the simulator SDK, so compile against the device SDK.
+      - name: Compile CaptureApp for iOS
+        run: >
+          xcodebuild -scheme CaptureApp -destination 'generic/platform=iOS'
+          -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build
+        working-directory: apps/capture-ios
+
+  object-capture-cli:
+    name: object-capture-cli (swift test, build)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: swift test --package-path services/reconstructor-macos/object-capture-cli
+      - run: swift build -c release --package-path services/reconstructor-macos/object-capture-cli

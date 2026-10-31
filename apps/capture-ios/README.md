@@ -42,3 +42,17 @@ app: `brew install xcodegen && xcodegen generate`, open `Scan3DCapture.xcodeproj
 - [ ] 30+ photo set uploads fully and the Mac worker reconstructs it.
 - [ ] On-device reconstruction finishes on the target device without being killed for memory.
 - [ ] Measure the result against the object: sensor scale is provenance, not a guarantee.
+
+## CI and TestFlight (#34)
+
+- `.github/workflows/ios.yml` (macOS runner, on changes under `apps/capture-ios` or the Mac CLI):
+  `swift test` for CaptureKit, a device-SDK compile of `CaptureApp`, and test + release build of the
+  Mac `scan3d-object-capture` CLI.
+- `.github/workflows/testflight.yml` is manual (`workflow_dispatch`, `testflight` environment).
+  It generates the project with XcodeGen, archives with automatic signing through an App Store
+  Connect API key, and uploads via `ExportOptions.plist` (`destination: upload`). The build number is
+  the run number.
+  - Secrets: `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`,
+    `APP_STORE_CONNECT_KEY_P8_BASE64` (`base64 -i AuthKey_XXXX.p8`). Variable: `APPLE_TEAM_ID`.
+  - Create the app record (bundle id `app.scan3d.capture`) in App Store Connect first.
+  - Neither workflow has run yet. Treat the first run as the verification and expect fixes.
