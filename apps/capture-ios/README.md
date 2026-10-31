@@ -37,7 +37,7 @@ app: `brew install xcodegen && xcodegen generate`, open `Scan3DCapture.xcodeproj
 
 - [ ] LiDAR iPhone/iPad on a current iOS: capture a real object end to end, note iOS version and model.
 - [ ] Unsupported (non-LiDAR) device shows the explanation instead of crashing.
-- [ ] Open a pairing link: server and token persist across relaunch; Unpair clears them.
+- [ ] Open a pairing link: a confirmation names the server host, nothing is stored until you accept, and a second link asks before replacing the current server. Server and token persist across relaunch; Unpair clears them.
 - [ ] Airplane mode mid-upload, then reconnect and relaunch: the upload resumes, no duplicates.
 - [ ] 30+ photo set uploads fully and the Mac worker reconstructs it.
 - [ ] On-device reconstruction finishes on the target device without being killed for memory.

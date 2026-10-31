@@ -11,7 +11,17 @@ public struct RootView: View {
     public var body: some View {
         content
             .environmentObject(model)
-            .onOpenURL { model.pair(url: $0) }
+            .onOpenURL { model.receive(url: $0) }
+            .alert(
+                model.pairedHost == nil ? "Pair with this server?" : "Replace your current server?",
+                isPresented: Binding(get: { model.pendingLink != nil }, set: { if !$0 { model.rejectPending() } })
+            ) {
+                Button("Pair") { model.confirmPending() }
+                Button("Cancel", role: .cancel) { model.rejectPending() }
+            } message: {
+                Text("Your photos will be uploaded to \(model.pendingLink?.server.host ?? "?"). "
+                    + "Only continue if you started this from your own server.")
+            }
             .padding()
     }
 
@@ -26,11 +36,12 @@ public struct RootView: View {
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .textFieldStyle(.roundedBorder)
                 Button("Pair") {
-                    if let url = URL(string: pairingText) { model.pair(url: url) }
+                    if let url = URL(string: pairingText) { model.receive(url: url) }
                 }
             }
         case .ready:
             VStack(spacing: 12) {
+                if let host = model.pairedHost { Text("Paired with \(host)").font(.footnote) }
                 if ObjectCaptureAvailability.isSupported {
                     Button("Scan an object") { model.beginCapture() }.buttonStyle(.borderedProminent)
                 } else {
