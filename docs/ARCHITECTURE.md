@@ -142,7 +142,7 @@ Reuse #26 for the agent skill and #27 for functional reconstruction. Keep STEP a
 
 ### 5.1 Capture evidence
 
-`capture-bundle/1` remains proposed, not an implemented import contract. It includes a versioned manifest, source/device, file hashes, declared units and scale provenance, images, optional depth/poses/intrinsics and an optional surface mesh. Document pose conventions when #23/#35 can verify them. Preserve originals privately, with appearance sidecars and source/license attribution. Point clouds and Gaussian splats need a separately verified reconstruction path.
+`capture-bundle/1` is written by the iOS app (`CaptureManifest`: schema, createdAt, device, scale `{declaredUnits, provenance}` and per-image path, sha256, bytes) and uploaded as a `capture_bundle` artifact beside the photos. The API and Mac worker do not import or verify it yet, so it remains a proposed contract on the server side. It includes a versioned manifest, source/device, file hashes, declared units and scale provenance, images, optional depth/poses/intrinsics and an optional surface mesh. Document pose conventions when #23/#35 can verify them. Preserve originals privately, with appearance sidecars and source/license attribution. Point clouds and Gaussian splats need a separately verified reconstruction path.
 
 ### 5.2 Atomic stage commits and reproducible recipes
 
