@@ -9,7 +9,9 @@ from fastapi import Depends, FastAPI, HTTPException
 
 from scan3d_api import __version__, auth, db
 from scan3d_api.auth_routes import router as auth_router
+from scan3d_api.limits import Limits
 from scan3d_api.schemas import Health, Job, JobCreate, JobStatus
+from scan3d_api.uploads import router as uploads_router
 
 
 def _job(row: sqlite3.Row) -> Job:
@@ -22,12 +24,17 @@ def _job(row: sqlite3.Row) -> Job:
     )
 
 
-def create_app(db_path: Path | None = None, *, secure_cookies: bool = True) -> FastAPI:
+def create_app(
+    db_path: Path | None = None, *, secure_cookies: bool = True, limits: Limits | None = None
+) -> FastAPI:
     app = FastAPI(title="3d-scan API", version=__version__)
     app.state.db_path = db_path or Path(os.environ.get("SCAN3D_DB", "data/scan3d.sqlite"))
     app.state.secure_cookies = secure_cookies
+    app.state.data_dir = app.state.db_path.parent / "files"
+    app.state.limits = limits or Limits()
     db.init(app.state.db_path)
     app.include_router(auth_router)
+    app.include_router(uploads_router)
 
     @app.get("/api/health", operation_id="getHealth")
     def health() -> Health:

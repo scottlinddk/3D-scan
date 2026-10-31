@@ -6,12 +6,13 @@ from fastapi.testclient import TestClient
 
 from scan3d_api import auth, db
 from scan3d_api.app import create_app
+from scan3d_api.limits import Limits
 
 
 class Harness:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, limits: Limits | None = None) -> None:
         self.path = path
-        self.client = TestClient(create_app(path, secure_cookies=False))
+        self.client = TestClient(create_app(path, secure_cookies=False, limits=limits))
 
     def invite(self, *, admin: bool = False) -> str:
         conn = db.connect(self.path)
