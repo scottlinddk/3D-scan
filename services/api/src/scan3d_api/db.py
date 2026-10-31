@@ -29,8 +29,16 @@ CREATE TABLE IF NOT EXISTS artifacts(
   id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id),
   owner_id INTEGER NOT NULL REFERENCES users(id), kind TEXT NOT NULL, filename TEXT NOT NULL,
   size INTEGER NOT NULL, sha256 TEXT NOT NULL, path TEXT NOT NULL,
-  parent_id TEXT REFERENCES artifacts(id), protected INTEGER NOT NULL DEFAULT 1,
+  parent_id TEXT REFERENCES artifacts(id), task_id TEXT, protected INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS tasks(
+  id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id),
+  owner_id INTEGER NOT NULL REFERENCES users(id), capability TEXT NOT NULL,
+  input_revision TEXT NOT NULL, payload TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'queued',
+  attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3,
+  lease_token TEXT, lease_expires TEXT, cancel_requested INTEGER NOT NULL DEFAULT 0,
+  result TEXT, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS tasks_claim ON tasks(state, capability, created_at);
 """
 
 

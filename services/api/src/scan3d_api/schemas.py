@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -95,3 +95,59 @@ class Artifact(BaseModel):
     size: int
     sha256: str
     protected: bool
+
+
+type TaskState = Literal["queued", "leased", "succeeded", "failed", "cancelled"]
+
+
+class TaskCreate(BaseModel):
+    capability: str = Field(min_length=1, max_length=64, pattern=r"^[a-z0-9_.-]+$")
+    input_revision: str = Field(min_length=1, max_length=128)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class Task(BaseModel):
+    id: str
+    job_id: str
+    capability: str
+    input_revision: str
+    state: TaskState
+    attempts: int
+    error: str | None = None
+    result: dict[str, Any] | None = None
+
+
+class Claim(BaseModel):
+    capabilities: list[str] = Field(min_length=1, max_length=20)
+    lease_seconds: int = Field(default=60, ge=5, le=900)
+
+
+class ClaimedTask(Task):
+    lease_token: str
+    lease_expires: datetime
+    payload: dict[str, Any]
+
+
+class ClaimResult(BaseModel):
+    task: ClaimedTask | None = None
+
+
+class Heartbeat(BaseModel):
+    lease_token: str
+    extend_seconds: int = Field(default=60, ge=5, le=900)
+
+
+class HeartbeatResult(BaseModel):
+    cancel_requested: bool
+
+
+class Complete(BaseModel):
+    lease_token: str
+    input_revision: str
+    result: dict[str, Any] = Field(default_factory=dict)
+
+
+class Fail(BaseModel):
+    lease_token: str
+    error: str = Field(max_length=2000)
+    retryable: bool = False

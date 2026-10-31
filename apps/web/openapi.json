@@ -471,6 +471,458 @@
         }
       }
     },
+    "/api/jobs/{job_id}/tasks": {
+      "post": {
+        "summary": "Create Task",
+        "operationId": "createTask",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Tasks",
+        "operationId": "listTasks",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Task"
+                  },
+                  "title": "Response Listtasks"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/cancel": {
+      "post": {
+        "summary": "Cancel Task",
+        "operationId": "cancelTask",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker/claim": {
+      "post": {
+        "summary": "Claim",
+        "operationId": "claimTask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Claim"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker/tasks/{task_id}/heartbeat": {
+      "post": {
+        "summary": "Heartbeat",
+        "operationId": "heartbeatTask",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Heartbeat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartbeatResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker/tasks/{task_id}/complete": {
+      "post": {
+        "summary": "Complete",
+        "operationId": "completeTask",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Complete"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker/tasks/{task_id}/fail": {
+      "post": {
+        "summary": "Fail",
+        "operationId": "failTask",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Fail"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker/tasks/{task_id}/inputs/{artifact_id}": {
+      "get": {
+        "summary": "Task Input",
+        "operationId": "getTaskInput",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "artifact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Artifact Id"
+            }
+          },
+          {
+            "name": "x-lease-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Lease-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker/tasks/{task_id}/artifacts": {
+      "put": {
+        "summary": "Put Artifact",
+        "operationId": "putTaskArtifact",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "intermediate",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "parent_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Id"
+            }
+          },
+          {
+            "name": "x-lease-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Lease-Token"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Artifact"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Health",
@@ -624,6 +1076,163 @@
         "required": ["id", "job_id", "kind", "filename", "size", "sha256", "protected"],
         "title": "Artifact"
       },
+      "Claim": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Capabilities"
+          },
+          "lease_seconds": {
+            "type": "integer",
+            "maximum": 900.0,
+            "minimum": 5.0,
+            "title": "Lease Seconds",
+            "default": 60
+          }
+        },
+        "type": "object",
+        "required": ["capabilities"],
+        "title": "Claim"
+      },
+      "ClaimResult": {
+        "properties": {
+          "task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClaimedTask"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ClaimResult"
+      },
+      "ClaimedTask": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "capability": {
+            "type": "string",
+            "title": "Capability"
+          },
+          "input_revision": {
+            "type": "string",
+            "title": "Input Revision"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TaskState"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "lease_token": {
+            "type": "string",
+            "title": "Lease Token"
+          },
+          "lease_expires": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Lease Expires"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "capability",
+          "input_revision",
+          "state",
+          "attempts",
+          "lease_token",
+          "lease_expires",
+          "payload"
+        ],
+        "title": "ClaimedTask"
+      },
+      "Complete": {
+        "properties": {
+          "lease_token": {
+            "type": "string",
+            "title": "Lease Token"
+          },
+          "input_revision": {
+            "type": "string",
+            "title": "Input Revision"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": ["lease_token", "input_revision"],
+        "title": "Complete"
+      },
+      "Fail": {
+        "properties": {
+          "lease_token": {
+            "type": "string",
+            "title": "Lease Token"
+          },
+          "error": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Error"
+          },
+          "retryable": {
+            "type": "boolean",
+            "title": "Retryable",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["lease_token", "error"],
+        "title": "Fail"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -652,6 +1261,35 @@
         "type": "object",
         "required": ["status", "version"],
         "title": "Health"
+      },
+      "Heartbeat": {
+        "properties": {
+          "lease_token": {
+            "type": "string",
+            "title": "Lease Token"
+          },
+          "extend_seconds": {
+            "type": "integer",
+            "maximum": 900.0,
+            "minimum": 5.0,
+            "title": "Extend Seconds",
+            "default": 60
+          }
+        },
+        "type": "object",
+        "required": ["lease_token"],
+        "title": "Heartbeat"
+      },
+      "HeartbeatResult": {
+        "properties": {
+          "cancel_requested": {
+            "type": "boolean",
+            "title": "Cancel Requested"
+          }
+        },
+        "type": "object",
+        "required": ["cancel_requested"],
+        "title": "HeartbeatResult"
       },
       "InviteCreate": {
         "properties": {
@@ -799,6 +1437,88 @@
         "type": "object",
         "required": ["invite", "email", "password"],
         "title": "Register"
+      },
+      "Task": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "capability": {
+            "type": "string",
+            "title": "Capability"
+          },
+          "input_revision": {
+            "type": "string",
+            "title": "Input Revision"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TaskState"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": ["id", "job_id", "capability", "input_revision", "state", "attempts"],
+        "title": "Task"
+      },
+      "TaskCreate": {
+        "properties": {
+          "capability": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9_.-]+$",
+            "title": "Capability"
+          },
+          "input_revision": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Input Revision"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "required": ["capability", "input_revision"],
+        "title": "TaskCreate"
+      },
+      "TaskState": {
+        "type": "string",
+        "enum": ["queued", "leased", "succeeded", "failed", "cancelled"]
       },
       "TokenCreate": {
         "properties": {
