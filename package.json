@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "description": "Scan a physical object and get a print-ready 3MF for Bambu Studio.",
-  "packageManager": "pnpm@10.28.0",
+  "packageManager": "pnpm@10.34.9",
   "engines": {
     "node": ">=22"
   },
