@@ -25,7 +25,7 @@ jobs:
     name: capture-ios (swift test, device build)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Unit tests (CaptureKit)
         run: swift test --package-path apps/capture-ios
       # ObjectCaptureSession is not in the simulator SDK, so compile against the device SDK.
@@ -39,6 +39,6 @@ jobs:
     name: object-capture-cli (swift test, build)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: swift test --package-path services/reconstructor-macos/object-capture-cli
       - run: swift build -c release --package-path services/reconstructor-macos/object-capture-cli
